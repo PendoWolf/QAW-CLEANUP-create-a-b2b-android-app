@@ -10,6 +10,25 @@ function trackEvent(name: string) {
   }
 }
 
+// Track Event: an API call failed and the red error message is shown.
+// Uses the registered event name verbatim (no "demo-" prefix).
+function trackRequestFailed(action: string, message: string) {
+  if (typeof window === "undefined") return;
+  // api.ts throws "<METHOD> <path> failed: <status>" for HTTP errors;
+  // anything else (e.g. "Failed to fetch") is a network-level failure.
+  const match = /failed: (\d{3})$/.exec(message);
+  try {
+    window.pendo?.track?.("Request failed", {
+      action,
+      failure_type: match ? "http" : "network",
+      http_status: match ? Number(match[1]) : 0,
+      error_message: message.substring(0, 100),
+    });
+  } catch {
+    // Never let tracking break the app.
+  }
+}
+
 export default function App() {
   const [state, setState] = useState<AppState>({ counter: 0, lastAction: "none" });
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +39,9 @@ export default function App() {
       setState(await fn());
       trackEvent(name);
     } catch (e) {
-      setError((e as Error).message);
+      const message = (e as Error).message;
+      setError(message);
+      trackRequestFailed(name, message);
     }
   };
 
