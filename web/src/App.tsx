@@ -20,7 +20,16 @@ export default function App() {
       setState(await fn());
       trackEvent(name);
     } catch (e) {
-      setError((e as Error).message);
+      const message = (e as Error).message;
+      setError(message);
+      // Track Event: a counter action or state sync request failed and the
+      // error message is shown. Feature clicks can't tell success from failure.
+      if (typeof window !== "undefined") {
+        window.pendo?.track?.("counter_action_failed", {
+          action: name,
+          errorMessage: String(message ?? "").substring(0, 200),
+        });
+      }
     }
   };
 
